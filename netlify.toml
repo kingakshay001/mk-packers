@@ -1,0 +1,14 @@
+[build]
+  package   = "artifacts/mk-packers"
+  command   = "pnpm --filter @workspace/mk-packers run build"
+  publish   = "artifacts/mk-packers/dist/public"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NODE_ENV     = "production"
+
+# SPA fallback — serve index.html for every route so client-side routing works
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
