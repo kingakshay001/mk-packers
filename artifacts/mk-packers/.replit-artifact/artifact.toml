@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "MK Packers & Movers"
+version = "1.0.0"
+id = "artifacts/mk-packers"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24387
+
+[services.development]
+run = "pnpm --filter @workspace/mk-packers run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mk-packers", "run", "build" ]
+publicDir = "artifacts/mk-packers/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24387"
+BASE_PATH = "/"
