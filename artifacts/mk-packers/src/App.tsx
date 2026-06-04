@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { motion, AnimatePresence } from "framer-motion";
@@ -311,12 +310,8 @@ const Navbar = () => {
 };
 
 function BookingForm() {
-  const { toast } = useToast();
-  const [step, setStep] = useState<"form" | "otp" | "success">("form");
-  const [otp, setOtp] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [submittedValues, setSubmittedValues] = useState<FormValues | null>(null);
+  const [step, setStep] = useState<"form" | "success">("form");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -331,86 +326,22 @@ function BookingForm() {
     },
   });
 
-  const onSubmit = async (values: FormValues) => {
-    setIsSending(true);
-    try {
-      const res = await fetch("/api/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: values.mobile }),
-      });
-      const data = (await res.json()) as { success: boolean; message: string };
-      if (!data.success) {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-        return;
-      }
-      setSubmittedValues(values);
-      setStep("otp");
-      toast({ title: "OTP Sent!", description: `A 6-digit OTP has been sent to ${values.mobile}` });
-    } catch {
-      toast({ title: "Network error", description: "Could not connect. Please try again.", variant: "destructive" });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!submittedValues) return;
-    if (otp.length !== 6) {
-      toast({ title: "Invalid OTP", description: "Please enter the 6-digit OTP", variant: "destructive" });
-      return;
-    }
-    setIsVerifying(true);
-    try {
-      const res = await fetch("/api/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: submittedValues.mobile, otp }),
-      });
-      const data = (await res.json()) as { success: boolean; message: string };
-      if (!data.success) {
-        toast({ title: "OTP Failed", description: data.message, variant: "destructive" });
-        return;
-      }
-      const v = submittedValues;
-      const msg =
-        `Hello MK Packers & Movers!%0A%0AI want to book a shifting service.%0A%0A` +
-        `*Shift Type:* ${v.type === "local" ? "Local Shifting" : "Intercity Shifting"}%0A` +
-        `*Pickup Area:* ${v.pickup}%0A` +
-        `*Drop Area:* ${v.drop}%0A` +
-        `*Name:* ${v.name}%0A` +
-        `*Mobile:* ${v.mobile}%0A` +
-        `*State:* ${v.state}%0A` +
-        `*Pincode:* ${v.pincode}%0A%0A` +
-        `Please provide me a free quote. Thank you!`;
-      window.open(`https://wa.me/919728391081?text=${msg}`, "_blank");
-      setStep("success");
-    } catch {
-      toast({ title: "Error", description: "Verification failed. Please try again.", variant: "destructive" });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (!submittedValues) return;
-    setIsSending(true);
-    setOtp("");
-    try {
-      const res = await fetch("/api/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: submittedValues.mobile }),
-      });
-      const data = (await res.json()) as { success: boolean; message: string };
-      if (data.success) {
-        toast({ title: "OTP Resent!", description: "New OTP has been sent to your mobile." });
-      }
-    } catch {
-      toast({ title: "Error", description: "Could not resend OTP.", variant: "destructive" });
-    } finally {
-      setIsSending(false);
-    }
+  const onSubmit = (values: FormValues) => {
+    setIsSubmitting(true);
+    const v = values;
+    const msg =
+      `Hello MK Packers & Movers!%0A%0AI want to book a shifting service.%0A%0A` +
+      `*Shift Type:* ${v.type === "local" ? "Local Shifting" : "Intercity Shifting"}%0A` +
+      `*Pickup Area:* ${v.pickup}%0A` +
+      `*Drop Area:* ${v.drop}%0A` +
+      `*Name:* ${v.name}%0A` +
+      `*Mobile:* ${v.mobile}%0A` +
+      `*State:* ${v.state}%0A` +
+      `*Pincode:* ${v.pincode}%0A%0A` +
+      `Please provide me a free quote. Thank you!`;
+    window.open(`https://wa.me/919728391081?text=${msg}`, "_blank");
+    setStep("success");
+    setIsSubmitting(false);
   };
 
   return (
@@ -566,72 +497,14 @@ function BookingForm() {
                   <Button
                     type="submit"
                     data-testid="button-get-quote"
-                    disabled={isSending}
+                    disabled={isSubmitting}
                     className="w-full font-bold text-base h-12 mt-1 bg-primary hover:bg-orange-600 transition-all shadow-md hover:shadow-orange-200 hover:shadow-lg"
                   >
-                    {isSending ? "Sending OTP..." : "Get Free Quote"}
-                    {!isSending && <ArrowRight size={18} className="ml-2" />}
+                    {isSubmitting ? "Opening WhatsApp..." : "Get Free Quote on WhatsApp"}
+                    {!isSubmitting && <ArrowRight size={18} className="ml-2" />}
                   </Button>
                 </form>
               </Form>
-            </motion.div>
-          )}
-
-          {step === "otp" && submittedValues && (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <div className="text-center">
-                <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <PhoneCall size={28} className="text-primary" />
-                </div>
-                <h4 className="text-lg font-bold text-[#0f1f3d]">Verify Your Number</h4>
-                <p className="text-sm text-gray-500 mt-1">
-                  OTP sent to <span className="font-semibold text-[#0f1f3d]">+91 {submittedValues.mobile}</span>
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-gray-700 block">Enter 6-Digit OTP</label>
-                <Input
-                  type="tel"
-                  maxLength={6}
-                  placeholder="Enter OTP here"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                  data-testid="input-otp"
-                  className="text-center text-2xl tracking-[0.5em] font-bold border-2 border-gray-200 focus:border-primary h-14 bg-gray-50"
-                />
-              </div>
-
-              <Button
-                onClick={handleVerifyOtp}
-                disabled={isVerifying || otp.length !== 6}
-                data-testid="button-verify-otp"
-                className="w-full font-bold h-12 bg-primary hover:bg-orange-600 shadow-md"
-              >
-                {isVerifying ? "Verifying..." : "Verify & Continue to WhatsApp"}
-              </Button>
-
-              <div className="flex items-center justify-between text-sm">
-                <button
-                  onClick={() => { setStep("form"); setOtp(""); }}
-                  className="text-gray-500 hover:text-[#0f1f3d] transition-colors"
-                >
-                  Edit Details
-                </button>
-                <button
-                  onClick={handleResend}
-                  disabled={isSending}
-                  className="text-primary hover:text-orange-600 font-semibold transition-colors"
-                >
-                  {isSending ? "Sending..." : "Resend OTP"}
-                </button>
-              </div>
             </motion.div>
           )}
 
@@ -659,7 +532,7 @@ function BookingForm() {
                 Open WhatsApp Chat
               </a>
               <button
-                onClick={() => { setStep("form"); setOtp(""); form.reset(); }}
+                onClick={() => { setStep("form"); form.reset(); }}
                 className="block w-full text-sm text-gray-400 hover:text-gray-600 mt-2"
               >
                 Submit another request
@@ -917,7 +790,7 @@ const Services = () => {
 const Process = () => {
   const steps = [
     { num: "01", title: "Fill your details", desc: "Submit your move info — pickup, drop, name, number via our quick form." },
-    { num: "02", title: "Verify with OTP", desc: "Confirm your mobile with a one-time password for security." },
+    { num: "02", title: "WhatsApp Connect", desc: "Your details are sent directly to our team via WhatsApp for instant response." },
     { num: "03", title: "Get your free quote", desc: "Our team reviews and calls you back with a transparent estimate." },
     { num: "04", title: "Sit back & relax", desc: "We pack, move, and deliver your belongings safely and on time." },
   ];
@@ -1095,7 +968,7 @@ const FAQ = () => {
     { q: "How is the shifting cost calculated?", a: "Cost depends on the volume of goods, distance, packing materials, and floor access. We always provide a transparent, itemized estimate before confirming the booking." },
     { q: "Do you provide packing materials?", a: "Yes. We bring all necessary materials — bubble wrap, corrugated boxes, shrink wrap, foam padding, and tape — included in the service." },
     { q: "How much time does local shifting take?", a: "For a standard 2BHK in Gurugram, packing and loading takes 3–4 hours, unloading and unpacking another 2–3 hours. The full process is usually completed in a single day." },
-    { q: "Why do you ask for OTP verification?", a: "OTP verification confirms your mobile number is valid and ensures your booking request reaches our team securely, so we can call you back without delay." },
+    { q: "How quickly will your team respond?", a: "As soon as you submit the form, your details are sent to our WhatsApp. Our team typically responds within 30 minutes during business hours (9 AM – 8 PM)." },
     { q: "Can I track my shipment?", a: "Yes, our team provides regular updates via phone and WhatsApp throughout the transit so you always know where your belongings are." },
   ];
 
