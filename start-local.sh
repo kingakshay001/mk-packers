@@ -1,12 +1,20 @@
 #!/bin/bash
-# MK Packers & Movers — Local Development Starter
-# Usage: bash start-local.sh
-
+# ==============================================
+#  MK Packers & Movers — Local Development
+#  Usage:  bash start-local.sh
+#          bash start-local.sh --single   (single combined server)
+# ==============================================
 set -e
 
-echo "============================================"
-echo "  MK Packers & Movers — Local Dev Server"
-echo "============================================"
+SINGLE_MODE=false
+if [[ "$1" == "--single" ]]; then
+  SINGLE_MODE=true
+fi
+
+# Load .env if present
+if [ -f ".env" ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
 
 # Check Node.js
 if ! command -v node &> /dev/null; then
@@ -20,44 +28,51 @@ if ! command -v pnpm &> /dev/null; then
   npm install -g pnpm
 fi
 
-# Install dependencies
 echo ""
 echo "Installing dependencies..."
 pnpm install
 
-# Check FAST2SMS_API_KEY
-if [ -z "$FAST2SMS_API_KEY" ]; then
-  if [ -f ".env" ]; then
-    export $(grep -v '^#' .env | xargs)
-  fi
-fi
-
 if [ -z "$FAST2SMS_API_KEY" ]; then
   echo ""
-  echo "WARNING: FAST2SMS_API_KEY is not set."
-  echo "  OTP SMS will not be delivered to customers."
-  echo "  Set it in .env file or export it before running this script."
+  echo "WARNING: FAST2SMS_API_KEY not set — OTP SMS will not be delivered."
+  echo "  Add it to a .env file: FAST2SMS_API_KEY=your_key"
   echo ""
 fi
 
-echo ""
-echo "Starting API server on http://localhost:8080 ..."
-PORT=8080 pnpm --filter @workspace/api-server run dev &
-API_PID=$!
+if [ "$SINGLE_MODE" = true ]; then
+  # -----------------------------------------------
+  # SINGLE SERVER MODE (production-like, one port)
+  # -----------------------------------------------
+  echo "Building combined server..."
+  bash build-combined.sh
 
-# Give API time to start
-sleep 4
+  echo ""
+  echo "Starting combined server on http://localhost:3000 ..."
+  echo "(API + frontend served from a single Express server)"
+  echo ""
+  PORT=3000 NODE_ENV=production node artifacts/api-server/dist/index.mjs
 
-echo ""
-echo "Starting frontend on http://localhost:5173 ..."
-echo ""
-echo "Website is ready! Open: http://localhost:5173"
-echo "API running at:         http://localhost:8080/api"
-echo ""
-echo "Press Ctrl+C to stop."
-echo ""
+else
+  # -----------------------------------------------
+  # DEV MODE (two processes, hot reload)
+  # -----------------------------------------------
+  echo "Starting API server on http://localhost:8080 ..."
+  PORT=8080 pnpm --filter @workspace/api-server run dev &
+  API_PID=$!
 
-PORT=5173 BASE_PATH=/ pnpm --filter @workspace/mk-packers run dev
+  sleep 4
 
-# Cleanup API server on exit
-kill $API_PID 2>/dev/null || true
+  echo ""
+  echo "Starting frontend dev server on http://localhost:5173 ..."
+  echo ""
+  echo "Open: http://localhost:5173"
+  echo "API:  http://localhost:8080/api"
+  echo ""
+  echo "Tip: for a single combined server, run: bash start-local.sh --single"
+  echo ""
+  echo "Press Ctrl+C to stop."
+  echo ""
+  PORT=5173 BASE_PATH=/ pnpm --filter @workspace/mk-packers run dev
+
+  kill $API_PID 2>/dev/null || true
+fi

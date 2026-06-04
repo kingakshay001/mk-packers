@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -30,5 +31,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Serve React frontend static files in production
+// __dirname is injected by the esbuild banner and points to dist/
+// so dist/public is where the Vite build output lives
+const serveStatic = process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true";
+
+if (serveStatic) {
+  const frontendDir = process.env.FRONTEND_DIR ?? path.join(__dirname, "public");
+
+  logger.info({ frontendDir }, "Serving frontend static files");
+
+  app.use(express.static(frontendDir));
+
+  // SPA fallback — serve index.html for all non-API routes
+  app.use((_req, res) => {
+    res.sendFile(path.join(frontendDir, "index.html"));
+  });
+}
 
 export default app;
