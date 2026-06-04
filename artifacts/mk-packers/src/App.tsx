@@ -494,17 +494,22 @@ function BookingForm() {
   const onSubmit = (values: FormValues) => {
     setIsSubmitting(true);
     const v = values;
-    const msg =
-      `Hello MK Packers & Movers!%0A%0AI want to book a shifting service.%0A%0A` +
-      `*Shift Type:* ${v.type === "local" ? "Local Shifting" : "Intercity Shifting"}%0A` +
-      `*Pickup Area:* ${v.pickup}%0A` +
-      `*Drop Area:* ${v.drop}%0A` +
-      `*Name:* ${v.name}%0A` +
-      `*Mobile:* ${v.mobile}%0A` +
-      `*State:* ${v.state}%0A` +
-      `*Pincode:* ${v.pincode}%0A%0A` +
-      `Please provide me a free quote. Thank you!`;
-    window.open(`https://wa.me/919728391081?text=${msg}`, "_blank");
+    const msg = [
+      `Hello MK Packers & Movers! 🙏`,
+      ``,
+      `I want to book a shifting service.`,
+      ``,
+      `*Shift Type:* ${v.type === "local" ? "Local Shifting" : "Intercity Shifting"}`,
+      `*Pickup Area:* ${v.pickup}`,
+      `*Drop Area:* ${v.drop}`,
+      `*Name:* ${v.name}`,
+      `*Mobile:* +91 ${v.mobile}`,
+      `*State:* ${v.state}`,
+      `*Pincode:* ${v.pincode}`,
+      ``,
+      `Please provide me a free quote. Thank you!`,
+    ].join("\n");
+    window.open(`https://wa.me/919728391081?text=${encodeURIComponent(msg)}`, "_blank");
     setStep("success");
     setIsSubmitting(false);
   };
