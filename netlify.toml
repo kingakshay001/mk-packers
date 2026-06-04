@@ -2,6 +2,10 @@
   command   = "pnpm --filter @workspace/mk-packers run build"
   publish   = "artifacts/mk-packers/dist/public"
 
+[build.environment]
+  PNPM_VERSION = "9"
+  NODE_VERSION = "22"
+
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
